@@ -6,7 +6,7 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
-#define DIM 768
+#define DIM 1024
 
 void kernel_wrapper(int dimension, int *matrix_a, int *matrix_b, int *matrix_c);
 
@@ -16,10 +16,13 @@ void matrix_product(int *matrix_a, int *matrix_b, int *matrix_c);
 bool check_product(int *gpu, int *cpu);
 
 int main(int argc, char const *argv[]) {
+	printf("Computing Product Of Two %d x %d Matrices\n", DIM, DIM);
+	
 	// arrays for data		
 	int *host_a, *host_b, *host_c, *host_gold_c;
 	int *gpu_a, *gpu_b, *gpu_c;
 	
+	// allocate space 1 c  
 	cudaMallocHost((void**) &host_a, DIM * DIM * sizeof(int));
 	cudaMallocHost((void**) &host_b, DIM * DIM * sizeof(int));
 	cudaMallocHost((void**) &host_c, DIM * DIM * sizeof(int));
@@ -53,9 +56,9 @@ int main(int argc, char const *argv[]) {
 	cudaEventRecord(stop_gpu, 0);
 	cudaEventSynchronize(stop_gpu);
 	
-	float elapsedTime;
-	cudaEventElapsedTime(&elapsedTime, start_gpu, stop_gpu); 
-	printf( "Time for GPU: %3.1f s\n", elapsedTime/1000.0f );
+	float gpu_elapsed_time;
+	cudaEventElapsedTime(&gpu_elapsed_time, start_gpu, stop_gpu); 
+	printf( "Time for GPU To Compute Product: %.2f s\n", gpu_elapsed_time/1000.0f );
 	cudaEventDestroy(start_gpu);
 	cudaEventDestroy(stop_gpu);
 	
@@ -65,7 +68,7 @@ int main(int argc, char const *argv[]) {
 	matrix_product(host_a, host_b, host_gold_c);
 	stop_cpu = clock();
 	
-	printf("Time for GPU: %3.1f s\n", (float)(stop_cpu - start_cpu)/CLOCKS_PER_SEC);
+	printf("Time for CPU To Compute Product: %.2f s\n", (float)(stop_cpu - start_cpu)/CLOCKS_PER_SEC);
 	// copy gpu_results back to host_data.
 //	print_matrix(host_c);
 	
