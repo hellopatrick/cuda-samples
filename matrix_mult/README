@@ -1,0 +1,5 @@
+Naive Matrix Multiplication.
+
+Simple "unfolds" the for loops of standard matrix multiplication.
+
+1024-elements speed-up: 0.72s v. 30.39s
