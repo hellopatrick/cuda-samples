@@ -10,6 +10,11 @@
 	Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction
 */
 
+#define CACHE_LEFT_OKAY (local_x > 0)
+#define CACHE_RIGHT_OKAY (local_x < 15)
+#define CACHE_ABOVE_OKAY (local_y > 0)
+#define CACHE_BELOW_OKAY (local_y < 15)
+
 #define LEFT_OKAY (x > 0)
 #define RIGHT_OKAY (x < (DIM_X - 1))
 #define ABOVE_OKAY (y > 0)
@@ -21,23 +26,33 @@ __global__ void cached_game_of_life(int *current, int *future) {
 	int local_x = threadIdx.x;
 	int local_y = threadIdx.y;
 	
-	int global_x = threadIdx.x + blockIdx.x * blockDim.x;
-	int global_y = threadIdx.y + blockIdx.y * blockDim.y;
-	
-	if(global_x < DIM_X && global_y < DIM_Y) {
-		cache[local_y][local_x] = current[global_y * DIM_Y + global_x];
+	int x = threadIdx.x + blockIdx.x * blockDim.x;
+	int y = threadIdx.y + blockIdx.y * blockDim.y;
+		
+	if(x < DIM_X && y < DIM_Y) {
+		cache[local_y][local_x] = current[y * DIM_X + x];
 		__syncthreads();
+		
+		int neighbor_count = 0;
+		
+		if(LEFT_OKAY) { neighbor_count += current[y * DIM_X + (x - 1)]; }
+		if(RIGHT_OKAY) { neighbor_count += current[y * DIM_X + (x + 1)]; }
+		if(ABOVE_OKAY) { neighbor_count += current[(y - 1) * DIM_X + x]; }
+		if(BELOW_OKAY) { neighbor_count += current[(y + 1) * DIM_X + x]; }
+		if(LEFT_OKAY && ABOVE_OKAY) { neighbor_count += current[(y - 1) * DIM_X + (x - 1)]; }
+		if(LEFT_OKAY && BELOW_OKAY) { neighbor_count += current[(y + 1) * DIM_X + (x - 1)]; }
+		if(RIGHT_OKAY && ABOVE_OKAY) { neighbor_count += current[(y - 1) * DIM_X + (x + 1)]; }
+		if(RIGHT_OKAY && BELOW_OKAY) { neighbor_count += current[(y + 1) * DIM_X + (x + 1)]; }
 	}
 }
-
 
 __global__ void simple_game_of_life(int *current, int *future) {
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 	
-	int neighbor_count = 0;
-	
 	if(x < DIM_X && y < DIM_Y) { // MUST MAKE SURE X, Y ARE GOOD! OTHERWISE HAVOC!
+		int neighbor_count = 0;
+		
 		if(LEFT_OKAY) { neighbor_count += current[y * DIM_X + (x - 1)]; }
 		if(RIGHT_OKAY) { neighbor_count += current[y * DIM_X + (x + 1)]; }
 		if(ABOVE_OKAY) { neighbor_count += current[(y - 1) * DIM_X + x]; }

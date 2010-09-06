@@ -2,4 +2,6 @@ CUDA Examples
 
 Run `make` in a given directory to build.  Run `make run` to run built sample.
 
+Examples with OpenGL output use GLUT and Apple's -framework compiler flag.  If not on a Mac, you'll obviously need to fix this.
+
 Copyright (c) 2010 Patrick Rogers
