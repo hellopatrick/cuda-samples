@@ -1,3 +1,5 @@
 CUDA Examples
 
+Run `make` in a given directory to build.  Run `make run` to run built sample.
+
 Copyright (c) 2010 Patrick Rogers
