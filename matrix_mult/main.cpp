@@ -58,7 +58,7 @@ int main(int argc, char const *argv[]) {
 	
 	float gpu_elapsed_time;
 	cudaEventElapsedTime(&gpu_elapsed_time, start_gpu, stop_gpu); 
-	printf( "Time for GPU To Compute Product: %.2f s\n", gpu_elapsed_time/1000.0f );
+	printf( "Time for GPU To Compute Product: %.5f s\n", gpu_elapsed_time/1000.0f );
 	cudaEventDestroy(start_gpu);
 	cudaEventDestroy(stop_gpu);
 	
@@ -68,7 +68,7 @@ int main(int argc, char const *argv[]) {
 	matrix_product(host_a, host_b, host_gold_c);
 	stop_cpu = clock();
 	
-	printf("Time for CPU To Compute Product: %.2f s\n", (float)(stop_cpu - start_cpu)/CLOCKS_PER_SEC);
+	printf("Time for CPU To Compute Product: %.5f s\n", (float)(stop_cpu - start_cpu)/CLOCKS_PER_SEC);
 	// copy gpu_results back to host_data.
 //	print_matrix(host_c);
 	
