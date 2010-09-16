@@ -2,7 +2,6 @@
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
-
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
@@ -16,39 +15,53 @@
 void simple_game_of_life_wrapper(int *current, int *future);
 void cached_game_of_life_wrapper(int *current, int *future);
 
+void setup_textures(int *first, int *second);
+void textured_game_of_life_wrapper(int *out);
+
 void add_glider(int *board);
 void fill_board(int *board, int percent);
 void print_board(int *board);
 void update_board(int *current, int *future);
 void check_boards(int *one, int *two);
 
+cudaError_t error;
+
 int main(int argc, char const *argv[]) {
 	printf("Computing Game Of Life On %d x %d Board.\n", DIM_X, DIM_Y);
 	
-	int *host_current, *host_future, *host_future_uncached, *host_future_cached;
+	int *host_current, *host_future, *host_future_naive, *host_future_cached, *host_future_texture;
 	int *gpu_current, *gpu_future;
 	
-	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
-	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));
-	cudaMallocHost((void**) &host_future_uncached, DIM_X * DIM_Y * sizeof(int));
-	cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));
-		
-	cudaMalloc((void**) &gpu_current, DIM_X * DIM_Y * sizeof(int));
-	cudaMalloc((void**) &gpu_future, DIM_X * DIM_Y * sizeof(int));
+	error = cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
+	error = cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
+	error = cudaMallocHost((void**) &host_future_naive, DIM_X * DIM_Y * sizeof(int));
+	error = cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));
+	error = cudaMallocHost((void**) &host_future_texture, DIM_X * DIM_Y * sizeof(int));
+	assert(cudaGetLastError() == cudaSuccess);
+	
+	error = cudaMalloc((void**) &gpu_current, DIM_X * DIM_Y * sizeof(int));
+	printf("%s\n", cudaGetErrorString( error ));
+	error = cudaMalloc((void**) &gpu_future, DIM_X * DIM_Y * sizeof(int));
+	printf("%s\n", cudaGetErrorString( error ));
+	
+	assert(cudaGetLastError() == cudaSuccess);
 	
 	fill_board(host_current, 40); 
-	print_board(host_current);
 	
 	clock_t start, stop;
+	error = cudaMemcpy(gpu_current, host_current, DIM_X * DIM_Y * sizeof(int), cudaMemcpyHostToDevice);
+	assert(error == cudaSuccess);
+	
+	setup_textures(gpu_current, gpu_future);
 	
 	for(int i = 1; i < 10; i++) {
 		printf("=========\n");
-		cudaMemcpy(gpu_current, host_current, DIM_X * DIM_Y * sizeof(int), cudaMemcpyHostToDevice);
+//		print_board(host_current);
+		
 		start = clock();
 		simple_game_of_life_wrapper(gpu_current, gpu_future);
-		cudaMemcpy(host_future_uncached, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
+		cudaMemcpy(host_future_naive, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
 		stop = clock();
-		
 		printf("Time for Uncached GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
 		
 		start = clock();
@@ -58,15 +71,21 @@ int main(int argc, char const *argv[]) {
 		printf("Time for Cached GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
 		
 		start = clock();
+		textured_game_of_life_wrapper(gpu_future);
+		cudaMemcpy(host_future_texture, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
+		stop = clock();
+		printf("Time for Textured GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
+		
+		start = clock();
 		update_board(host_current, host_future);
 		stop = clock();
 		printf("Time for CPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
-			
-		// host current now is the gpu_future
-		print_board(host_future);
 				
-		check_boards(host_future_uncached, host_future);
+		check_boards(host_future_naive, host_future);
 		check_boards(host_future_cached, host_future);
+		check_boards(host_future_texture, host_future);
+		
+		cudaMemcpy(gpu_current, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToDevice);
 		
 		int *temp;
 		temp = host_current;
@@ -75,7 +94,7 @@ int main(int argc, char const *argv[]) {
 	}
 	
 	cudaFree(host_future);
-	cudaFree(host_future_uncached);
+	cudaFree(host_future_naive);
 	cudaFree(host_future_cached);
 	cudaFree(host_current);
 	cudaFree(gpu_current);
