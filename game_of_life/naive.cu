@@ -1,24 +1,7 @@
 #include "kernel.cuh"
 
-/*
-	Any live cell with fewer than two live neighbours dies, as if caused by under-population.
-	Any live cell with more than three live neighbours dies, as if by overcrowding.
-	Any live cell with two or three live neighbours lives on to the next generation.
-	Any dead cell with exactly three live neighbours becomes a live cell, as if by reproduction
-*/
-
-#define CACHE_LEFT_OKAY (local_x > 0)
-#define CACHE_RIGHT_OKAY (local_x < 15)
-#define CACHE_ABOVE_OKAY (local_y > 0)
-#define CACHE_BELOW_OKAY (local_y < 15)
-
-#define LEFT_OKAY (x > 0)
-#define RIGHT_OKAY (x < (DIM_X - 1))
-#define ABOVE_OKAY (y > 0)
-#define BELOW_OKAY (y < (DIM_Y - 1))
-
 // no caching version.
-__global__ void simple_game_of_life(int *current, int *future) {
+__global__ void naive_game_of_life(int *current, int *future) {
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 	
@@ -45,9 +28,9 @@ __global__ void simple_game_of_life(int *current, int *future) {
 }
 
 // the wrapper around the kernel call for main program to call.
-void simple_game_of_life_wrapper(int *current, int *future) {
+void naive_game_of_life_wrapper(int *current, int *future) {
 	dim3 threads(16,16);
 	dim3 blocks(DIM_X/16 + 1, DIM_Y/16 + 1);
 	
-	simple_game_of_life<<<blocks, threads>>>(current, future);
+	naive_game_of_life<<<blocks, threads>>>(current, future);
 }

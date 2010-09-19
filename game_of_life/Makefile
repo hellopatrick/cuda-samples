@@ -4,7 +4,7 @@ PROJECT_NAME = game_of_life
 # CC is the compiler for C++ host code.
 
 NVCC = nvcc
-CC = g++
+CC = clang++
 
 CUDAPATH = /usr/local/cuda
 

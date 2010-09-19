@@ -12,12 +12,13 @@
 #define ABOVE_OKAY (y > 0)
 #define BELOW_OKAY (y < (DIM_Y - 1))
 
-void naive_game_of_life_wrapper(int *current, int *future);
-void cached_game_of_life_wrapper(int *current, int *future);
+void setup_textures(int *first, int *second);
+void free_textures();
+void kernel_wrapper(bool current_is_a, int *out);
 
-void add_glider(int *board);
 void fill_board(int *board, int percent);
 void print_board(int *board);
+void print_neighbors(int *board);
 void update_board(int *current, int *future);
 void check_boards(int *one, int *two);
 
@@ -26,55 +27,47 @@ cudaError_t error;
 int main(int argc, char const *argv[]) {
 	printf("Computing Game Of Life On %d x %d Board.\n", DIM_X, DIM_Y);
 	
-	int *host_current, *host_future, *host_future_naive, *host_future_cached;
+	int *host_current, *host_future, *host_gpu_results;
 	int *gpu_current, *gpu_future;
 	
 	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
-	cudaMallocHost((void**) &host_future_naive, DIM_X * DIM_Y * sizeof(int));
-	cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));	
-	assert(cudaGetLastError() == cudaSuccess);
-	
+	cudaMallocHost((void**) &host_gpu_results, DIM_X * DIM_Y * sizeof(int));
 	cudaMalloc((void**) &gpu_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMalloc((void**) &gpu_future, DIM_X * DIM_Y * sizeof(int));
-	printf("%s\n", cudaGetErrorString(cudaGetLastError()));
 	assert(cudaGetLastError() == cudaSuccess);
 	
-	fill_board(host_current, 40); 
-//	add_glider(host_current);
+	fill_board(host_current, 40);
+	
+	cudaMemcpy(gpu_current, host_current, DIM_X * DIM_Y * sizeof(int), cudaMemcpyHostToDevice);
+	setup_textures(gpu_current, gpu_future);
+	
+	assert(cudaGetLastError() == cudaSuccess);
 	
 	clock_t start, stop;
-	cudaMemcpy(gpu_current, host_current, DIM_X * DIM_Y * sizeof(int), cudaMemcpyHostToDevice);
-	assert(cudaGetLastError() == cudaSuccess);
-	
+	bool current_is_a = true;
+	printf("START!\n");
 	for(int i = 1; i < 10; i++) {
-		printf("=========\n");
-		print_board(host_current);
-		
 		start = clock();
-		naive_game_of_life_wrapper(gpu_current, gpu_future);
-		cudaMemcpy(host_future_naive, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
-		assert(cudaGetLastError() == cudaSuccess);
-		stop = clock();
-		printf("Time for Naive GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
 		
-		start = clock();
-		cached_game_of_life_wrapper(gpu_current, gpu_future);
-		cudaMemcpy(host_future_cached, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
+		int *output = current_is_a ? gpu_future : gpu_current;
+		kernel_wrapper(current_is_a, output);
+		current_is_a = !current_is_a;
+		
+		cudaMemcpy(host_gpu_results, output, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
 		assert(cudaGetLastError() == cudaSuccess);
+		
 		stop = clock();
-		printf("Time for Cached GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
+		printf("Time for Textured GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
 				
 		start = clock();
 		update_board(host_current, host_future);
 		stop = clock();
 		printf("Time for CPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
 		
-		check_boards(host_future_naive, host_future);
-		check_boards(host_future_cached, host_future);
-		
-		cudaMemcpy(gpu_current, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToDevice);
-		
+		printf("======\n");
+		check_boards(host_gpu_results, host_future);
+				
 		int *temp;
 		temp = host_current;
 		host_current = host_future;
@@ -82,9 +75,8 @@ int main(int argc, char const *argv[]) {
 	}
 	
 	cudaFree(host_future);
-	cudaFree(host_future_naive);
-	cudaFree(host_future_cached);
 	cudaFree(host_current);
+	cudaFree(host_gpu_results);
 	cudaFree(gpu_current);
 	cudaFree(gpu_future);
 	
@@ -103,6 +95,15 @@ void add_glider(int *board) {
 	board[1 * DIM_X + 3] = 1;
 	board[2 * DIM_X + 3] = 1;
 	board[3 * DIM_X + 3] = 1;
+}
+
+void print_neighbors(int *board) {
+	for(int y = 0; y < DIM_Y; y++) {
+		for(int x = 0; x < DIM_X; x++) {
+			printf("%d", board[y * DIM_X + x]);
+		}
+		printf("\n");
+	}
 }
 
 void print_board(int *board) {
