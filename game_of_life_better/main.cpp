@@ -7,11 +7,6 @@
 
 #include "dimensions.h"
 
-#define LEFT_OKAY (x > 0)
-#define RIGHT_OKAY (x < (DIM_X - 1))
-#define ABOVE_OKAY (y > 0)
-#define BELOW_OKAY (y < (DIM_Y - 1))
-
 void naive_game_of_life_wrapper(int *current, int *future);
 void cached_game_of_life_wrapper(int *current, int *future);
 
@@ -32,7 +27,7 @@ int main(int argc, char const *argv[]) {
 	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
 	cudaMallocHost((void**) &host_future_naive, DIM_X * DIM_Y * sizeof(int));
-	cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));	
+	cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));
 	assert(cudaGetLastError() == cudaSuccess);
 	
 	cudaMalloc((void**) &gpu_current, DIM_X * DIM_Y * sizeof(int));
@@ -40,49 +35,56 @@ int main(int argc, char const *argv[]) {
 	printf("%s\n", cudaGetErrorString(cudaGetLastError()));
 	assert(cudaGetLastError() == cudaSuccess);
 	
-	fill_board(host_current, 40); 
-//	add_glider(host_current);
+//	fill_board(host_current, 40); 
+	add_glider(host_current);
 	
 	clock_t start, stop;
 	cudaMemcpy(gpu_current, host_current, DIM_X * DIM_Y * sizeof(int), cudaMemcpyHostToDevice);
-	assert(cudaGetLastError() == cudaSuccess);
 	
-	for(int i = 1; i < 10; i++) {
+//	print_board(host_current);
+	
+	float time_naive, time_cached, time_cpu;
+	for(int i = 1; i < 50; i++) {
 		printf("=========\n");
 		
 		start = clock();
 		naive_game_of_life_wrapper(gpu_current, gpu_future);
 		cudaMemcpy(host_future_naive, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
-		assert(cudaGetLastError() == cudaSuccess);
 		stop = clock();
-		printf("Time for Naive GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
+		time_naive = (float)(stop - start)/CLOCKS_PER_SEC;
+		printf("Time for Naive GPU To Compute Next Phase: %.5f s\n", time_naive);
 		
 		start = clock();
 		cached_game_of_life_wrapper(gpu_current, gpu_future);
 		cudaMemcpy(host_future_cached, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
-		assert(cudaGetLastError() == cudaSuccess);
 		stop = clock();
-		printf("Time for Cached GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
-				
+		time_cached = (float)(stop - start)/CLOCKS_PER_SEC;
+		printf("Time for Cached GPU To Compute Next Phase: %.5f s\n", time_cached);
+		
 		start = clock();
 		update_board(host_current, host_future);
 		stop = clock();
-		printf("Time for CPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
+		time_cpu = (float)(stop - start)/CLOCKS_PER_SEC;
+		printf("Time for CPU To Compute Next Phase: %.5f s\n", time_cpu);
 		
-		check_boards(host_future_naive, host_future);
-		check_boards(host_future_cached, host_future);
-		
-		cudaMemcpy(gpu_current, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToDevice);
-		
+		printf("speedup for naive = %.2f; speedup for cached = %.2f; speedup for cached over naive = %.2f\n", time_cpu/time_naive, time_cpu/time_cached, time_naive/time_cached);
+//		print_board(host_future);
+		check_boards(host_future, host_future_naive);
+		check_boards(host_future, host_future_cached);
+				
 		int *temp;
+		
 		temp = host_current;
 		host_current = host_future;
 		host_future = temp;
+		
+		temp = gpu_current;
+		gpu_current = gpu_future;
+		gpu_future = temp;
 	}
 	
 	cudaFree(host_future);
 	cudaFree(host_future_naive);
-	cudaFree(host_future_cached);
 	cudaFree(host_current);
 	cudaFree(gpu_current);
 	cudaFree(gpu_future);
@@ -118,17 +120,15 @@ void update_board(int *current, int *future) {
 	for(int y = 0; y < DIM_Y; y++) {
 		for(int x = 0; x < DIM_X; x++) {
 			int neighbor_count = 0;
-			//printf("(%d, %d) >>", x, y);
-			if(LEFT_OKAY) { neighbor_count += current[y * DIM_X + (x - 1)]; }
-			if(RIGHT_OKAY) { neighbor_count += current[y * DIM_X + (x + 1)]; }
-			if(ABOVE_OKAY) { neighbor_count += current[(y - 1) * DIM_X + x]; }
-			if(BELOW_OKAY) { neighbor_count += current[(y + 1) * DIM_X + x]; }
-			if(LEFT_OKAY && ABOVE_OKAY) { neighbor_count += current[(y - 1) * DIM_X + (x - 1)]; }
-			if(LEFT_OKAY && BELOW_OKAY) { neighbor_count += current[(y + 1) * DIM_X + (x - 1)]; }
-			if(RIGHT_OKAY && ABOVE_OKAY) { neighbor_count += current[(y - 1) * DIM_X + (x + 1)]; }
-			if(RIGHT_OKAY && BELOW_OKAY) { neighbor_count += current[(y + 1) * DIM_X + (x + 1)]; }
+			neighbor_count += current[y * DIM_X + ((x - 1 + DIM_X) % DIM_X)];
+			neighbor_count += current[y * DIM_X + ((x + 1) % DIM_X)];
+			neighbor_count += current[((y - 1 + DIM_Y) % DIM_Y) * DIM_X + x];
+			neighbor_count += current[((y + 1) % DIM_Y) * DIM_X + x];
+			neighbor_count += current[((y - 1 + DIM_Y) % DIM_Y) * DIM_X + ((x - 1 + DIM_X) % DIM_X)];
+			neighbor_count += current[((y - 1 + DIM_Y) % DIM_Y) * DIM_X + ((x + 1) % DIM_X)];
+			neighbor_count += current[((y + 1) % DIM_Y) * DIM_X + ((x - 1 + DIM_X) % DIM_X)];
+			neighbor_count += current[((y + 1) % DIM_Y) * DIM_X + ((x + 1) % DIM_X)];
 
-			//printf("\n");
 			if(neighbor_count == 3) {
 				future[y * DIM_X + x] = 1;
 			} else if(neighbor_count == 2 && current[y * DIM_X + x] == 1) {

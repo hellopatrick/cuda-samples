@@ -1,10 +1,10 @@
-PROJECT_NAME = trivial
+PROJECT_NAME = game_of_life
 
 # NVCC is path to nvcc. Here it is assumed /usr/local/cuda is on one's PATH.
 # CC is the compiler for C++ host code.
 
 NVCC = nvcc
-CC = g++
+CC = clang++
 
 CUDAPATH = /usr/local/cuda
 
