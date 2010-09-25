@@ -7,6 +7,8 @@
 
 #include "dimensions.h"
 
+#define STEPS 100
+
 void naive_game_of_life_wrapper(int *current, int *future);
 void cached_game_of_life_wrapper(int *current, int *future);
 
@@ -18,11 +20,10 @@ void check_boards(int *one, int *two);
 
 cudaError_t error;
 
-int main(int argc, char const *argv[]) {
-	printf("Computing Game Of Life On %d x %d Board.\n", DIM_X, DIM_Y);
-	
+int main(int argc, char **argv) {
 	int *host_current, *host_future, *host_future_naive, *host_future_cached;
 	int *gpu_current, *gpu_future;
+	clock_t start, stop;
 	
 	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
@@ -35,16 +36,15 @@ int main(int argc, char const *argv[]) {
 	printf("%s\n", cudaGetErrorString(cudaGetLastError()));
 	assert(cudaGetLastError() == cudaSuccess);
 	
-//	fill_board(host_current, 40); 
+	fill_board(host_current, 40); 
 	add_glider(host_current);
 	
-	clock_t start, stop;
 	cudaMemcpy(gpu_current, host_current, DIM_X * DIM_Y * sizeof(int), cudaMemcpyHostToDevice);
-	
+
 //	print_board(host_current);
 	
 	float time_naive, time_cached, time_cpu;
-	for(int i = 1; i < 50; i++) {
+	for(int i = 1; i < STEPS; i++) {
 		printf("=========\n");
 		
 		start = clock();
@@ -68,7 +68,7 @@ int main(int argc, char const *argv[]) {
 		printf("Time for CPU To Compute Next Phase: %.5f s\n", time_cpu);
 		
 		printf("speedup for naive = %.2f; speedup for cached = %.2f; speedup for cached over naive = %.2f\n", time_cpu/time_naive, time_cpu/time_cached, time_naive/time_cached);
-//		print_board(host_future);
+
 		check_boards(host_future, host_future_naive);
 		check_boards(host_future, host_future_cached);
 				
