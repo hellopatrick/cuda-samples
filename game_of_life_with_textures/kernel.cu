@@ -17,7 +17,7 @@
 
 texture<int> a, b;
 
-__global__ void kernel(bool current_is_a, int *future) {
+__global__ void kernel(int current_is_a, int *future) {
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
 	int y = threadIdx.y + blockIdx.y * blockDim.y;
 	int point = x + y * DIM_X;
@@ -67,19 +67,19 @@ __global__ void kernel(bool current_is_a, int *future) {
 	}
 }
 
-void setup_textures(int *first, int *second) {
+extern "C" void setup_textures(int *first, int *second) {
 	cudaChannelFormatDesc desc = cudaCreateChannelDesc<int>();
 	cudaBindTexture(NULL, a, first, desc, DIM_X * DIM_Y * sizeof(int));
 	cudaBindTexture(NULL, b, second, desc, DIM_X * DIM_Y * sizeof(int));
 }
 
-void free_textures() {
+extern "C" void free_textures() {
 	cudaUnbindTexture(a);
 	cudaUnbindTexture(b);
 }
 
 // the wrapper around the kernel call for main program to call.
-void kernel_wrapper(bool current_is_a, int *out) {
+extern "C" void kernel_wrapper(int current_is_a, int *out) {
 	dim3 threads(16,16);
 	dim3 blocks((DIM_X + DIM_X - 1)/16 + 1, (DIM_Y + DIM_Y - 1)/16);
 	

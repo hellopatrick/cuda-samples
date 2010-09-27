@@ -30,7 +30,7 @@ __global__ void naive_game_of_life(int *current, int *future) {
 }
 
 // the wrapper around the kernel call for main program to call.
-void naive_game_of_life_wrapper(int *current, int *future) {
+extern "C" void naive_game_of_life_wrapper(int *current, int *future) {
 	dim3 threads(16,16);
 	dim3 blocks(DIM_X/16 + 1, DIM_Y/16 + 1);
 	

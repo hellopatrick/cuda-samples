@@ -4,7 +4,7 @@ PROJECT_NAME = game_of_life
 # CC is the compiler for C++ host code.
 
 NVCC = nvcc
-CC = clang++
+CC = clang
 
 CUDAPATH = /usr/local/cuda
 
@@ -19,7 +19,7 @@ LFLAGS = -m32 -L$(CUDAPATH)/lib -lcuda -lcudart -lm
 all: build clean
 
 build: build_dir gpu cpu
-	$(CC) $(LFLAGS) -o $(BUILD_DIR)/$(PROJECT_NAME) *.o
+	$(NVCC) $(LFLAGS) -o $(BUILD_DIR)/$(PROJECT_NAME) *.o
 
 build_dir:
 	mkdir -p $(BUILD_DIR)
@@ -28,7 +28,7 @@ gpu:
 	$(NVCC) $(NVCCFLAGS) *.cu
 
 cpu:			
-	$(CC) $(CFLAGS) *.cpp
+	$(CC) $(CFLAGS) *.c
 
 clean:
 	rm *.o

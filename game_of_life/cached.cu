@@ -89,7 +89,7 @@ __global__ void local_cache_game_of_life(int *current, int *future) {
 	}
 }
 
-void cached_game_of_life_wrapper(int *current, int *future) {
+extern "C" void cached_game_of_life_wrapper(int *current, int *future) {
 	dim3 threads(16,16);
 	dim3 blocks(DIM_X/16 + 1, DIM_Y/16 + 1);
 	

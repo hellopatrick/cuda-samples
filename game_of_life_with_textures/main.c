@@ -14,7 +14,7 @@
 
 void setup_textures(int *first, int *second);
 void free_textures();
-void kernel_wrapper(bool current_is_a, int *out);
+void kernel_wrapper(int current_is_a, int *out);
 
 void fill_board(int *board, int percent);
 void print_board(int *board);
@@ -45,14 +45,14 @@ int main(int argc, char const *argv[]) {
 	assert(cudaGetLastError() == cudaSuccess);
 	
 	clock_t start, stop;
-	bool current_is_a = true;
+	int current_is_a = 1;
 	printf("START!\n");
 	for(int i = 1; i < 10; i++) {
 		start = clock();
 		
 		int *output = current_is_a ? gpu_future : gpu_current;
 		kernel_wrapper(current_is_a, output);
-		current_is_a = !current_is_a;
+		current_is_a = current_is_a ? 0 : 1;
 		
 		cudaMemcpy(host_gpu_results, output, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
 		assert(cudaGetLastError() == cudaSuccess);
