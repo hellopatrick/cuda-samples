@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 
@@ -21,14 +22,12 @@ void print_board(int *board);
 void update_board(int *current, int *future);
 void check_boards(int *one, int *two);
 
-cudaError_t error;
-
-int main(int argc, char const *argv[]) {
+int main(int argc, char const *argv[]) {	
 	printf("Computing Game Of Life On %d x %d Board.\n", DIM_X, DIM_Y);
 	
 	int *host_current, *host_future, *host_future_naive, *host_future_cached;
 	int *gpu_current, *gpu_future;
-	
+		
 	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
 	cudaMallocHost((void**) &host_future_naive, DIM_X * DIM_Y * sizeof(int));
