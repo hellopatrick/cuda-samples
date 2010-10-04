@@ -14,7 +14,7 @@
 #define BELOW_OKAY (y < (DIM_Y - 1))
 
 void naive_game_of_life_wrapper(int *current, int *future);
-void cached_game_of_life_wrapper(int *current, int *future);
+// void cached_game_of_life_wrapper(int *current, int *future);
 
 void add_glider(int *board);
 void fill_board(int *board, int percent);
@@ -31,7 +31,7 @@ int main(int argc, char const *argv[]) {
 	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
 	cudaMallocHost((void**) &host_future_naive, DIM_X * DIM_Y * sizeof(int));
-	cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));	
+//	cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));	
 	assert(cudaGetLastError() == cudaSuccess);
 	
 	cudaMalloc((void**) &gpu_current, DIM_X * DIM_Y * sizeof(int));
@@ -55,21 +55,21 @@ int main(int argc, char const *argv[]) {
 		assert(cudaGetLastError() == cudaSuccess);
 		stop = clock();
 		printf("Time for Naive GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
-		
+/*		
 		start = clock();
 		cached_game_of_life_wrapper(gpu_current, gpu_future);
 		cudaMemcpy(host_future_cached, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
 		assert(cudaGetLastError() == cudaSuccess);
 		stop = clock();
 		printf("Time for Cached GPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
-				
+*/				
 		start = clock();
 		update_board(host_current, host_future);
 		stop = clock();
 		printf("Time for CPU To Compute Next Phase: %.5f s\n", (float)(stop - start)/CLOCKS_PER_SEC);
 		
 		check_boards(host_future_naive, host_future);
-		check_boards(host_future_cached, host_future);
+//		check_boards(host_future_cached, host_future);
 		
 		cudaMemcpy(gpu_current, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToDevice);
 		
@@ -81,7 +81,7 @@ int main(int argc, char const *argv[]) {
 	
 	cudaFree(host_future);
 	cudaFree(host_future_naive);
-	cudaFree(host_future_cached);
+//	cudaFree(host_future_cached);
 	cudaFree(host_current);
 	cudaFree(gpu_current);
 	cudaFree(gpu_future);
