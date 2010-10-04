@@ -70,13 +70,16 @@ int main(int argc, char const *argv[]) {
 		
 		check_boards(host_future_naive, host_future);
 //		check_boards(host_future_cached, host_future);
-		
-		cudaMemcpy(gpu_current, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToDevice);
-		
+				
 		int *temp;
+		
 		temp = host_current;
 		host_current = host_future;
 		host_future = temp;
+		
+		temp = gpu_current;
+		gpu_current = gpu_future;
+		gpu_future = temp;
 	}
 	
 	cudaFree(host_future);
