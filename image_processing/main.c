@@ -22,8 +22,8 @@
 int main (int argc, char const *argv[]) {
 	uchar4 *pixels;
 	png_t *info;
-	
-	read_png("test.png", &info, &pixels);
+	printf("%s\n", PNG_LIBPNG_VER_STRING);
+	read_png("data/in3.png", &info, &pixels);
 	
 	int x, y;
 	
@@ -33,9 +33,9 @@ int main (int argc, char const *argv[]) {
 	
 	for(x = 0; x < info->width; x++) {
 		for(y = 0; y < info->height; y++) {
-			pixels[L(x,y)].x = 255;
+			pixels[L(x,y)].w = 128;
 		}
 	}
-	write_png("test_write.png", info, pixels);
+	write_png("data/out.png", info, pixels);
 	return 0;
 }
