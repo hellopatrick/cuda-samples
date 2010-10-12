@@ -7,7 +7,7 @@
 
 #include "dimensions.h"
 
-#define STEPS 100
+#define STEPS 10
 
 void naive_game_of_life_wrapper(int *current, int *future);
 void cached_game_of_life_wrapper(int *current, int *future);
@@ -21,6 +21,8 @@ void check_boards(int *one, int *two);
 cudaError_t error;
 
 int main(int argc, char **argv) {
+	printf("Computing Game Of Life On %d x %d Board.\n", DIM_X, DIM_Y);
+	
 	int *host_current, *host_future, *host_future_naive, *host_future_cached;
 	int *gpu_current, *gpu_future;
 	clock_t start, stop;
@@ -85,6 +87,7 @@ int main(int argc, char **argv) {
 	
 	cudaFree(host_future);
 	cudaFree(host_future_naive);
+	cudaFree(host_future_cached);
 	cudaFree(host_current);
 	cudaFree(gpu_current);
 	cudaFree(gpu_future);

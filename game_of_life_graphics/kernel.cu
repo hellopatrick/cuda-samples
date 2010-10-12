@@ -1,5 +1,6 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <cuda_gl_interop.h>
 
 #include "dimensions.h"
 // no caching version.
@@ -46,10 +47,24 @@ __global__ void cached_game_of_life(int *current, int *future) {
 	}
 }
 
+__global__ void convert_to_pixels(int *input, uchar4 *output) {
+	int x = threadIdx.x + blockIdx.x * blockDim.x;
+	int y = threadIdx.y + blockIdx.y * blockDim.y;
+	
+	if(x < DIM_X && y < DIM_Y) {
+		output[x + y * DIM_X].x = 0;
+		output[x + y * DIM_X].y = 255 * input[x + y * DIM_X];
+		output[x + y * DIM_X].z = 0;
+		output[x + y * DIM_X].w = 255;
+	}
+}
+
 // the wrapper around the kernel call for main program to call.
-void cached_game_of_life_wrapper(int *current, int *future) {
+extern "C" void cached_game_of_life_wrapper(int *current, int *future, uchar4 *output) {
 	dim3 threads(16,16);
 	dim3 blocks(DIM_X/16 + 1, DIM_Y/16 + 1);
 	
 	cached_game_of_life<<<blocks, threads>>>(current, future);
+	convert_to_pixels<<<blocks, threads>>>(future, output);
 }
+

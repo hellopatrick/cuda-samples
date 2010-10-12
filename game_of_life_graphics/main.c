@@ -2,11 +2,14 @@
 #include <stdio.h>
 #include <time.h>
 #include <assert.h>
+#include <string.h>
+
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <cuda_gl_interop.h>
 
 #ifdef __APPLE__
-    #include <OpenGL/gl.h>
+	#include <OpenGL/gl.h>
     #include <GLUT/glut.h>
 #else
 	#include <GL/gl.h>
@@ -15,78 +18,71 @@
 
 #include "dimensions.h"
 
-#define STEPS 100
-
-int *host_current, *host_future, *host_future_naive, *host_future_cached;
+int *host_current, *host_future;
 int *gpu_current, *gpu_future;
-
 uchar4 *pixels;
-clock_t start, stop;
 
-void cached_game_of_life_wrapper(int *current, int *future);
+GLuint bufferObj;
+struct cudaGraphicsResource *resource;
+
+void cached_game_of_life_wrapper(int *current, int *future, uchar4 *pixels);
 void fill_board(int *board, int percent);
-
-void add_glider(int *board) {
-	for(int y = 0; y < DIM_Y; y++) {
-		for(int x = 0; x < DIM_X; x++) {
-			board[y * DIM_X + x] = 0;
-		}
-	}
-	
-	board[2 * DIM_X + 1] = 1;
-	board[3 * DIM_X + 2] = 1;
-	board[1 * DIM_X + 3] = 1;
-	board[2 * DIM_X + 3] = 1;
-	board[3 * DIM_X + 3] = 1;
-}
-
-cudaError_t error;
 
 void display() {
 	int x, y;
 	
 	glClearColor(0.0, 0.0, 0.0, 1.0);
-	glClear(GL_COLOR_BUFFER_BIT);
-	glBegin(GL_POINTS);
-	glColor3f(1.0,0.0,0.0);
-	
-	for(x = 0; x < DIM_X; x++){
-		for(y = 0; y < DIM_Y; y++) {
-			if(host_future[y*DIM_X + x] == 1) { 
-				glVertex2i(x, y);
-			}
-		}
-	}
-	glEnd();
-	glFlush();
+    glClear(GL_COLOR_BUFFER_BIT);
+    glDrawPixels(DIM_X, DIM_Y, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    glutSwapBuffers();
 }
 
 void idle() {
-	cached_game_of_life_wrapper(gpu_current, gpu_future);
-	cudaMemcpy(host_future, gpu_future, DIM_X * DIM_Y * sizeof(int), cudaMemcpyDeviceToHost);
-//	update_board(host_current, host_future);
+	size_t size;
+	cudaGraphicsMapResources(1, &resource, NULL);
+	cudaGraphicsResourceGetMappedPointer((void **) &pixels, &size, resource);
+	
+	cached_game_of_life_wrapper(gpu_current, gpu_future, pixels);
 	
 	int *temp = gpu_current;
 	gpu_current = gpu_future;
 	gpu_future = temp;
+	
+	cudaGraphicsUnmapResources(1, &resource, NULL);
 	glutPostRedisplay();
 }
 
-int main(int argc, char **argv) {	
+int main(int argc, char **argv) {
+	struct cudaDeviceProp prop;
+	int dev;
+	
+	memset(&prop, 0, sizeof(struct cudaDeviceProp));
+	prop.major = 1; 
+	prop.minor = 0; 
+	cudaChooseDevice(&dev, &prop);
+	cudaGLSetGLDevice(dev);
+	assert(cudaGetLastError() == cudaSuccess);
+	
 	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(DIM_X,DIM_Y);
-    glutCreateWindow(argv[0]);
+    glutCreateWindow("cuda");
+
+	glGenBuffers(1, &bufferObj);
+	glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, bufferObj);
+	glBufferData(GL_PIXEL_UNPACK_BUFFER_ARB, DIM_X * DIM_Y * 4, NULL, GL_DYNAMIC_DRAW_ARB);
+	cudaGraphicsGLRegisterBuffer(&resource, bufferObj, cudaGraphicsMapFlagsNone);
+	assert(cudaGetLastError() == cudaSuccess);
+	
+//	gluOrtho2D(0, DIM_X, DIM_Y, 0);
     glutDisplayFunc(display);
 	glutIdleFunc(idle);
 	
-	gluOrtho2D(0, DIM_X, DIM_Y, 0);
 //	glEnable(GL_BLEND);
 //	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
 	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
-	cudaMallocHost((void**) &host_future_naive, DIM_X * DIM_Y * sizeof(int));
-	cudaMallocHost((void**) &host_future_cached, DIM_X * DIM_Y * sizeof(int));
 	assert(cudaGetLastError() == cudaSuccess);
 	
 	cudaMalloc((void**) &gpu_current, DIM_X * DIM_Y * sizeof(int));
@@ -103,7 +99,6 @@ int main(int argc, char **argv) {
 	printf("Freeing memory...");
 
 	cudaFree(host_future);
-	cudaFree(host_future_naive);
 	cudaFree(host_current);
 	cudaFree(gpu_current);
 	cudaFree(gpu_future);

@@ -1,4 +1,12 @@
-#include "kernel.cuh"
+#include <cuda.h>
+#include <cuda_runtime_api.h>
+
+#include "dimensions.h"
+
+#define LEFT_OKAY (x > 0)
+#define RIGHT_OKAY (x < (DIM_X - 1))
+#define ABOVE_OKAY (y > 0)
+#define BELOW_OKAY (y < (DIM_Y - 1))
 
 // no caching version.
 __global__ void naive_game_of_life(int *current, int *future) {
