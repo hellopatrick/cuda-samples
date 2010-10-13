@@ -30,7 +30,6 @@ int read_png(char *file_name, png_t **info, uchar4 **pixels) {
 	if ((*info)->color_type == PNG_COLOR_TYPE_GRAY || (*info)->color_type == PNG_COLOR_TYPE_GRAY_ALPHA) { png_set_gray_to_rgb(png_ptr); }
 	
 	if ((*info)->color_type == PNG_COLOR_TYPE_RGB || (*info)->color_type == PNG_COLOR_TYPE_GRAY) {
-		printf("Adding Alpha Channel...");
 		png_set_add_alpha(png_ptr, 0xFF, PNG_FILLER_AFTER);
 	}
 	
@@ -38,6 +37,7 @@ int read_png(char *file_name, png_t **info, uchar4 **pixels) {
 	png_get_IHDR(png_ptr, info_ptr, (png_uint_32 *)&((*info)->width), (png_uint_32 *)&((*info)->height), &((*info)->bit_depth), &((*info)->color_type), &((*info)->interlace_type), &((*info)->compression_type), &((*info)->filter_method));
 	
 	size_t bytes_per_row = png_get_rowbytes(png_ptr, info_ptr);
+	(*info)->bytes_per_row = bytes_per_row;
 	*pixels = malloc(bytes_per_row * (*info)->height);
 
 	int i;
