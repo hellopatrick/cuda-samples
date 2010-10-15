@@ -4,11 +4,11 @@
 
 texture <uchar4, 2, cudaReadModeElementType> tex;
 
-typedef unsigned char uchar;
+#define THRESHOLD 200
+#define SECONDARY_THRESHOLD 75
 
-__device__ unsigned char mean(uchar x0, uchar x1, uchar x2, uchar x3, uchar x4, uchar x5, uchar x6, uchar x7, uchar x8) {
-	int value = 8*x4 - x0 - x1 - x2 - x3 - x5 - x6 - x7 - x8;
-	return (unsigned char) (value / 9);
+__device__ float sobel(int a, int b, int c, int d, int e, int f) {
+	return (float) ((a + 2*b + c) - (d + 2*e + f));
 }
 
 __global__ void sobel_kernel(uchar4 *out, int width, int height) {
@@ -27,40 +27,50 @@ __global__ void sobel_kernel(uchar4 *out, int width, int height) {
 		x7 = tex2D(tex, x, y+1);
 		x8 = tex2D(tex, x+1, y+1);
 		
-		uchar4 new_pixel;
-		new_pixel.x = mean(x0.x, x1.x, x2.x, x3.x, x4.x, x5.x, x6.x, x7.x, x8.x);
-		new_pixel.y = mean(x0.y, x1.y, x2.y, x3.y, x4.y, x5.y, x6.y, x7.y, x8.y);
-		new_pixel.z = mean(x0.z, x1.z, x2.z, x3.z, x4.z, x5.z, x6.z, x7.z, x8.z);
-		new_pixel.w = 255;
+		float dfdy_r = sobel(x6.x, x7.x, x8.x, x0.x, x1.x, x2.x);
+		float dfdx_r = sobel(x2.x, x5.x, x8.x, x0.x, x3.x, x6.x);
 		
+		float dfdy_g = sobel(x6.y, x7.y, x8.y, x0.y, x1.y, x2.y);
+		float dfdx_g = sobel(x2.y, x5.y, x8.y, x0.y, x3.y, x6.y);
+		
+		float dfdy_b = sobel(x6.z, x7.z, x8.z, x0.z, x1.z, x2.z);
+		float dfdx_b = sobel(x2.z, x5.z, x8.z, x0.z, x3.z, x6.z);
+		
+		float gradient_r = abs(dfdy_r) + abs(dfdy_r);
+		float gradient_g = abs(dfdy_g) + abs(dfdy_g);
+		float gradient_b = abs(dfdy_b) + abs(dfdy_b);
+		
+		float dir_r = atanf(dfdy_r/dfdx_r);
+		float dir_g = atanf(dfdy_g/dfdx_g);
+		float dir_b = atanf(dfdy_b/dfdx_b);
+		
+		uchar4 new_pixel = (uchar4) {0,0,0,255};
+		if(gradient_r > THRESHOLD || gradient_g > THRESHOLD || gradient_b > THRESHOLD) {
+			new_pixel.x = 255;
+			new_pixel.y = 255;
+			new_pixel.z = 255;
+		} else if(gradient_r > SECONDARY_THRESHOLD || gradient_g > SECONDARY_THRESHOLD || gradient_b > SECONDARY_THRESHOLD) {
+			new_pixel.x = 128;
+			new_pixel.y = 128;
+			new_pixel.z = 128;
+		}
+				
 		out[x + y * width] = new_pixel;
 	}
 }
 
-extern "C" void sobel_wrapper(uchar4 *out, png_t *info) {
+extern "C" void sobel_wrapper(struct cudaArray *in, uchar4 *out, png_t *info) {
 	dim3 threads(16,16);
 	dim3 blocks((info->width)/16 + 1, (info->height)/16 + 1);
 	
-	sobel_kernel<<<blocks, threads>>>(out, info->width, info->height);
-}
-
-//why must these be in here?
-extern "C" struct cudaArray* setup_textures(uchar4 *in, int width, int height) {
 	cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
-	
-	struct cudaArray *array;
-	cudaMallocArray(&array, &channel_desc, width, height);
-	cudaMemcpyToArray(array, 0, 0, in, width*height*sizeof(uchar4), cudaMemcpyHostToDevice);
+	cudaBindTextureToArray(tex, in, channel_desc);
 	
 	tex.addressMode[0] = cudaAddressModeClamp;
 	tex.addressMode[1] = cudaAddressModeClamp;
 	tex.filterMode = cudaFilterModePoint;
 	tex.normalized = false;
 	
-	cudaBindTextureToArray(tex, array, channel_desc);
-	return array;
-}
-
-extern "C" void free_textures() {
+	sobel_kernel<<<blocks, threads>>>(out, info->width, info->height);
 	cudaUnbindTexture(tex);
 }
