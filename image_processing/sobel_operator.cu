@@ -4,11 +4,17 @@
 
 texture <uchar4, 2, cudaReadModeElementType> tex;
 
-#define THRESHOLD 200
+#define PRIMARY_THRESHOLD 125
 #define SECONDARY_THRESHOLD 75
 
-__device__ float sobel(int a, int b, int c, int d, int e, int f) {
-	return (float) ((a + 2*b + c) - (d + 2*e + f));
+__device__ unsigned char clamp(int n) {
+	if(n > 255) { return 255; }
+	else if(n < 0) { return 0; }
+	return n;
+}
+
+__device__ int sobel(int a, int b, int c, int d, int e, int f) {
+	return ((a + 2*b + c) - (d + 2*e + f));
 }
 
 __global__ void sobel_kernel(uchar4 *out, int width, int height) {
@@ -27,34 +33,35 @@ __global__ void sobel_kernel(uchar4 *out, int width, int height) {
 		x7 = tex2D(tex, x, y+1);
 		x8 = tex2D(tex, x+1, y+1);
 		
-		float dfdy_r = sobel(x6.x, x7.x, x8.x, x0.x, x1.x, x2.x);
-		float dfdx_r = sobel(x2.x, x5.x, x8.x, x0.x, x3.x, x6.x);
+		int dfdy_r = sobel(x6.x, x7.x, x8.x, x0.x, x1.x, x2.x);
+		int dfdx_r = sobel(x2.x, x5.x, x8.x, x0.x, x3.x, x6.x);
 		
-		float dfdy_g = sobel(x6.y, x7.y, x8.y, x0.y, x1.y, x2.y);
-		float dfdx_g = sobel(x2.y, x5.y, x8.y, x0.y, x3.y, x6.y);
+		int dfdy_g = sobel(x6.y, x7.y, x8.y, x0.y, x1.y, x2.y);
+		int dfdx_g = sobel(x2.y, x5.y, x8.y, x0.y, x3.y, x6.y);
 		
-		float dfdy_b = sobel(x6.z, x7.z, x8.z, x0.z, x1.z, x2.z);
-		float dfdx_b = sobel(x2.z, x5.z, x8.z, x0.z, x3.z, x6.z);
+		int dfdy_b = sobel(x6.z, x7.z, x8.z, x0.z, x1.z, x2.z);
+		int dfdx_b = sobel(x2.z, x5.z, x8.z, x0.z, x3.z, x6.z);
 		
-		float gradient_r = abs(dfdy_r) + abs(dfdy_r);
-		float gradient_g = abs(dfdy_g) + abs(dfdy_g);
-		float gradient_b = abs(dfdy_b) + abs(dfdy_b);
+		int gradient_r = abs(dfdy_r) + abs(dfdy_r);
+		int gradient_g = abs(dfdy_g) + abs(dfdy_g);
+		int gradient_b = abs(dfdy_b) + abs(dfdy_b);
 		
-		float dir_r = atanf(dfdy_r/dfdx_r);
-		float dir_g = atanf(dfdy_g/dfdx_g);
-		float dir_b = atanf(dfdy_b/dfdx_b);
+		/*
+		int dir_r = atanf(dfdy_r/dfdx_r);
+		int dir_g = atanf(dfdy_g/dfdx_g);
+		int dir_b = atanf(dfdy_b/dfdx_b);
+		*/
+		
+		float mean_gradient = (gradient_r + gradient_g + gradient_b) / 3.0f;
+		unsigned char edge = (mean_gradient > PRIMARY_THRESHOLD);
+		unsigned char slight_edge = (mean_gradient > SECONDARY_THRESHOLD);
 		
 		uchar4 new_pixel = (uchar4) {0,0,0,255};
-		if(gradient_r > THRESHOLD || gradient_g > THRESHOLD || gradient_b > THRESHOLD) {
-			new_pixel.x = 255;
-			new_pixel.y = 255;
-			new_pixel.z = 255;
-		} else if(gradient_r > SECONDARY_THRESHOLD || gradient_g > SECONDARY_THRESHOLD || gradient_b > SECONDARY_THRESHOLD) {
-			new_pixel.x = 128;
-			new_pixel.y = 128;
-			new_pixel.z = 128;
-		}
-				
+		
+		new_pixel.x = 255 * edge | 125 * slight_edge;
+		new_pixel.y = 255 * edge | 125 * slight_edge;
+		new_pixel.z = 255 * edge | 125 * slight_edge;
+		
 		out[x + y * width] = new_pixel;
 	}
 }

@@ -41,7 +41,18 @@ int main (int argc, char* argv[]) {
 	sobel_wrapper(dev_in, dev_out, info);
 	cudaMemcpy(host_out, dev_out, number_of_bytes, cudaMemcpyDeviceToHost);
 	
-	write_png("data/out.png", info, host_out);
+	char *output_file;
+	
+	if(argc > 3) {
+		output_file = argv[2];
+	} else {
+		output_file = "data/out.png";
+	}
+	
+	if(write_png("data/out.png", info, host_out) == PNG_FAILURE) {
+		printf("Error writing to file (%s)\n", "data/out.png");
+	}
+	
 	cudaFree(dev_in);
 	cudaFree(dev_out);
 	return 0;

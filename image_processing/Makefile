@@ -17,7 +17,7 @@ CFLAGS = -c -I$(CUDAPATH)/include -m64
 NVCCFLAGS = -c -I$(CUDAPATH)/include -m64
 
 # this is mac only. only linux system, remove -Xlinker and add in -lGL -lGLUT?
-LFLAGS = -m64 -L$(CUDAPATH)/lib -lcuda -lcudart -lm -lpng -lz -Xlinker -framework,OpenGL,-framework,GLUT
+LFLAGS = -m64 -L$(CUDAPATH)/lib -lcuda -lcudart -lm -lpng -lz
 
 all: build clean
 

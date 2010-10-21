@@ -66,7 +66,7 @@ int main(int argc, char **argv) {
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowSize(DIM_X,DIM_Y);
-    glutCreateWindow("cuda");
+  glutCreateWindow("cuda");
 
 	glGenBuffers(1, &bufferObj);
 	glBindBuffer(GL_PIXEL_UNPACK_BUFFER_ARB, bufferObj);
@@ -74,13 +74,9 @@ int main(int argc, char **argv) {
 	cudaGraphicsGLRegisterBuffer(&resource, bufferObj, cudaGraphicsMapFlagsNone);
 	assert(cudaGetLastError() == cudaSuccess);
 	
-//	gluOrtho2D(0, DIM_X, DIM_Y, 0);
-    glutDisplayFunc(display);
+  glutDisplayFunc(display);
 	glutIdleFunc(idle);
-	
-//	glEnable(GL_BLEND);
-//	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	
+
 	cudaMallocHost((void**) &host_current, DIM_X * DIM_Y * sizeof(int));
 	cudaMallocHost((void**) &host_future, DIM_X * DIM_Y * sizeof(int));	
 	assert(cudaGetLastError() == cudaSuccess);
@@ -90,7 +86,6 @@ int main(int argc, char **argv) {
 	printf("%s\n", cudaGetErrorString(cudaGetLastError()));
 	assert(cudaGetLastError() == cudaSuccess);
 	
-//	add_glider(host_current);
 	fill_board(host_current, 40);	
 	cudaMemcpy(gpu_current, host_current, DIM_X * DIM_Y * sizeof(int), cudaMemcpyHostToDevice);
 	
