@@ -1,4 +1,4 @@
-PROJECT_NAME = image_processing
+PROJECT_NAME = sobel
 
 # NVCC is path to nvcc. Here it is assumed /usr/local/cuda is on one's PATH.
 # CC is the compiler for C++ host code.
