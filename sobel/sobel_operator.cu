@@ -8,7 +8,7 @@ texture <uchar4, 2, cudaReadModeElementType> tex;
 #define SECONDARY_THRESHOLD 75
 
 __device__ unsigned char clamp(int n) {
-	return max(0, min(255, x));
+	return max(0, min(255, n));
 }
 
 __device__ int sobel(int a, int b, int c, int d, int e, int f) {
