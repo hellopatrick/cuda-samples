@@ -121,7 +121,8 @@ extern "C" void convert_to_rgb_wrapper(float4 *hsv, uchar4 *rgb, int width, int 
 	convert_to_rgb<<<blocks, threads>>>(hsv, rgb, width, height);
 }
 
-__global__ void compute_histogram(float4 *hsv, unsigned int *histogram, int width, int height) {
+
+__global__ void compute_hue_histogram(float4 *hsv, unsigned int *histogram, int width, int height) {
 	__shared__ unsigned int cached_histogram[360];
 	
 	int x = threadIdx.x + blockIdx.x * blockDim.x;
@@ -139,7 +140,7 @@ __global__ void compute_histogram(float4 *hsv, unsigned int *histogram, int widt
 	atomicAdd(&(histogram[threadIdx.x]), cached_histogram[threadIdx.x]);
 }
 
-__global__ void draw_image(unsigned int *histogram, uchar4 *image) {
+__global__ void draw_histogram(unsigned int *histogram, uchar4 *image) {
 	__shared__ unsigned int max;
 
 	int x = threadIdx.x;
@@ -166,7 +167,6 @@ extern "C" void compute_histogram_image(float4 *hsv, unsigned int *histogram, uc
 	dim3 threads(360,1);
 	dim3 blocks((width + 359)/360, height);
 	
-	compute_histogram<<<blocks, threads>>>(hsv, histogram, width, height);
-	
-	draw_image<<<1, threads>>>(histogram, image);
+	compute_hue_histogram<<<blocks, threads>>>(hsv, histogram, width, height);
+	draw_histogram<<<1, threads>>>(histogram, image);
 }

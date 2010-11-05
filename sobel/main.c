@@ -49,8 +49,8 @@ int main (int argc, char* argv[]) {
 		output_file = "data/out.png";
 	}
 	
-	if(write_png("data/out.png", info, host_out) == PNG_FAILURE) {
-		printf("Error writing to file (%s)\n", "data/out.png");
+	if(write_png(output_file, info, host_out) == PNG_FAILURE) {
+		printf("Error writing to file (%s)\n", output_file);
 	}
 	
 	cudaFree(dev_in);
