@@ -16,7 +16,7 @@ BUILD_DIR = build
 CFLAGS = -c -I$(CUDAPATH)/include -m64
 NVCCFLAGS = -c -I$(CUDAPATH)/include -m64
 
-# this is mac only. only linux system, remove -Xlinker and add in -lGL -lGLUT?
+# libpng needs libpng and zlib.
 LFLAGS = -m64 -L$(CUDAPATH)/lib -lcuda -lcudart -lm -lpng -lz
 
 all: build clean

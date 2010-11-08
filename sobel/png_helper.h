@@ -1,7 +1,7 @@
 #include <png.h>
 #include <vector_types.h>
 
-#define PNG_SUCCESS 1<<8
+#define PNG_SUCCESS 0x80
 #define PNG_FAILURE -1
 
 typedef struct {
