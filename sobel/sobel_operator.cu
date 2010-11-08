@@ -7,10 +7,6 @@ texture <uchar4, 2, cudaReadModeElementType> tex;
 #define PRIMARY_THRESHOLD 125
 #define SECONDARY_THRESHOLD 75
 
-__device__ unsigned char clamp(int n) {
-	return max(0, min(255, n));
-}
-
 __device__ int sobel(int a, int b, int c, int d, int e, int f) {
 	return ((a + 2*b + c) - (d + 2*e + f));
 }
@@ -40,9 +36,9 @@ __global__ void sobel_kernel(uchar4 *out, int width, int height) {
 		int dfdy_b = sobel(x6.z, x7.z, x8.z, x0.z, x1.z, x2.z);
 		int dfdx_b = sobel(x2.z, x5.z, x8.z, x0.z, x3.z, x6.z);
 		
-		int gradient_r = abs(dfdy_r) + abs(dfdy_r);
-		int gradient_g = abs(dfdy_g) + abs(dfdy_g);
-		int gradient_b = abs(dfdy_b) + abs(dfdy_b);
+		int gradient_r = abs(dfdy_r) + abs(dfdx_r);
+		int gradient_g = abs(dfdy_g) + abs(dfdx_g);
+		int gradient_b = abs(dfdy_b) + abs(dfdx_b);
 		
 		/*
 		int dir_r = atanf(dfdy_r/dfdx_r);
@@ -65,9 +61,6 @@ __global__ void sobel_kernel(uchar4 *out, int width, int height) {
 }
 
 extern "C" void sobel_wrapper(struct cudaArray *in, uchar4 *out, png_t *info) {
-	dim3 threads(16,16);
-	dim3 blocks((info->width)/16 + 1, (info->height)/16 + 1);
-	
 	cudaChannelFormatDesc channel_desc = cudaCreateChannelDesc(8, 8, 8, 8, cudaChannelFormatKindUnsigned);
 	cudaBindTextureToArray(tex, in, channel_desc);
 	
@@ -76,6 +69,8 @@ extern "C" void sobel_wrapper(struct cudaArray *in, uchar4 *out, png_t *info) {
 	tex.filterMode = cudaFilterModePoint;
 	tex.normalized = false;
 	
+	dim3 threads(16,16);
+	dim3 blocks((info->width + 15)/16, (info->height + 15)/16);
 	sobel_kernel<<<blocks, threads>>>(out, info->width, info->height);
 	cudaUnbindTexture(tex);
 }
