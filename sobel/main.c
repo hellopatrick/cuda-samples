@@ -53,7 +53,10 @@ int main (int argc, char* argv[]) {
 		printf("Error writing to file (%s)\n", output_file);
 	}
 	
-	cudaFree(dev_in);
+	cudaFreeArray(dev_in);
 	cudaFree(dev_out);
+	free(host_in);
+	free(host_out);
+	free(host_golden);
 	return 0;
 }
