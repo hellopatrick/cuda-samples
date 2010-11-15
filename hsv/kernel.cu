@@ -150,20 +150,18 @@ __global__ void draw_histogram(unsigned int *histogram, uchar4 *image) {
 	
 	atomicMax(&max, count);
 	__syncthreads();
+	
 	unsigned int scaled_size = (250 * count) / max;
 	uchar4 rgb_pixel = convert_one_pixel_to_rgb((float4) {(float) x, 1.0f, 1.0f, 255.0f});
 	uchar4 black = (uchar4) {0,0,0,255};
-	
-	uchar4 *paintbrush = &rgb_pixel;
-	
+		
 	int y;
 	for(y = 0; y < 256; y++) {
-		image[x + (255-y)*360] = *paintbrush;
-		if(y > scaled_size) { paintbrush = &black; }
+		image[x + (255-y)*360] = (y > scaled_size ? black : rgb_pixel);
 	}
 }
 
-extern "C" void compute_histogram_image(float4 *hsv, unsigned int *histogram, uchar4 *image, int width, int height) {
+extern "C" void compute_histogram_image_wrapper(float4 *hsv, unsigned int *histogram, uchar4 *image, int width, int height) {
 	dim3 threads(360,1);
 	dim3 blocks((width + 359)/360, height);
 	
